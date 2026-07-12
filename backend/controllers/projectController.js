@@ -440,6 +440,14 @@ export const downloadProjectSecure = async (req, res) => {
   if (token.startsWith('mock_download_token_')) {
     const projectId = token.replace('mock_download_token_', '');
     const project = mockDb.projects.find(p => p._id === projectId);
+    
+    if (project && project.fileKey) {
+      const filePath = getSecureFilePath(project.fileKey);
+      if (fs.existsSync(filePath)) {
+        return res.download(filePath, project.fileName);
+      }
+    }
+
     res.setHeader('Content-Disposition', `attachment; filename="${project ? project.fileName : 'project-source.zip'}"`);
     return res.send(`Mock cloud download content for project file: ${project ? project.title : 'Project Asset'}`);
   }
