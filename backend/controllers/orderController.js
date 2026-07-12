@@ -1,0 +1,364 @@
+import Order from '../models/Order.js';
+import Project from '../models/Project.js';
+import Coupon from '../models/Coupon.js';
+import User from '../models/User.js';
+import DownloadLog from '../models/DownloadLog.js';
+import { createRazorpayOrder, verifyRazorpaySignature } from '../config/razorpay.js';
+import { generateSignedDownloadUrl } from '../config/storage.js';
+import { sendPurchaseEmail } from '../config/mail.js';
+import { isDbConnected, mockDb } from '../config/mockDb.js';
+
+/**
+ * @desc    Initialize a checkout order and create Razorpay order ID
+ * @route   POST /api/orders/checkout
+ * @access  Private
+ */
+export const checkout = async (req, res) => {
+  const { projectIds, couponCode } = req.body;
+
+  try {
+    if (!projectIds || projectIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No projects in checkout' });
+    }
+
+    if (!isDbConnected()) {
+      const projects = mockDb.projects.filter(p => projectIds.includes(p._id));
+      if (projects.length === 0) {
+        return res.status(404).json({ success: false, message: 'Projects not found' });
+      }
+
+      let subtotal = projects.reduce((acc, curr) => acc + curr.price, 0);
+      let discountAmount = 0;
+      let totalAmount = subtotal;
+
+      if (couponCode) {
+        const coupon = mockDb.coupons.find(c => c.code === couponCode.toUpperCase() && c.isActive);
+        if (coupon) {
+          if (coupon.discountType === 'percentage') {
+            discountAmount = (subtotal * coupon.discountValue) / 100;
+          } else {
+            discountAmount = coupon.discountValue;
+          }
+          totalAmount = Math.max(0, subtotal - discountAmount);
+        }
+      }
+
+      const rpOrder = {
+        id: `order_mock_${Math.random().toString(36).substring(2, 12)}`,
+        amount: totalAmount,
+      };
+
+      const order = {
+        _id: `ord_mock_${Date.now()}`,
+        user: req.user._id,
+        items: projects.map(p => ({ project: p._id, priceAtPurchase: p.price, titleAtPurchase: p.title })),
+        totalAmount,
+        discountAmount,
+        couponApplied: couponCode ? couponCode.toUpperCase() : null,
+        paymentStatus: 'pending',
+        razorpayOrderId: rpOrder.id,
+        createdAt: new Date()
+      };
+
+      mockDb.orders.push(order);
+
+      return res.status(201).json({
+        success: true,
+        orderId: order._id,
+        razorpayOrderId: rpOrder.id,
+        amount: totalAmount,
+        currency: 'INR',
+        key: 'sandbox_key',
+        isMock: true
+      });
+    }
+
+    // Fetch projects
+    const projects = await Project.find({ _id: { $in: projectIds } });
+    if (projects.length === 0) {
+      return res.status(404).json({ success: false, message: 'Projects not found' });
+    }
+
+    // Calculate subtotal
+    let subtotal = projects.reduce((acc, curr) => acc + curr.price, 0);
+    let discountAmount = 0;
+    let totalAmount = subtotal;
+
+    // Apply coupon if valid
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+      if (coupon && coupon.isValid(subtotal)) {
+        if (coupon.discountType === 'percentage') {
+          discountAmount = (subtotal * coupon.discountValue) / 100;
+          if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+            discountAmount = coupon.maxDiscount;
+          }
+        } else {
+          discountAmount = coupon.discountValue;
+        }
+
+        totalAmount = Math.max(0, subtotal - discountAmount);
+      } else {
+        return res.status(400).json({ success: false, message: 'Invalid or expired coupon' });
+      }
+    }
+
+    // Generate unique order receipt ID
+    const receiptId = `receipt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    // Create Razorpay Order
+    const rpOrder = await createRazorpayOrder(totalAmount, receiptId);
+
+    // Create pending order in database
+    const orderItems = projects.map((proj) => ({
+      project: proj._id,
+      priceAtPurchase: proj.price,
+      titleAtPurchase: proj.title,
+    }));
+
+    const order = await Order.create({
+      user: req.user._id,
+      items: orderItems,
+      totalAmount,
+      discountAmount,
+      couponApplied: couponCode ? couponCode.toUpperCase() : null,
+      paymentStatus: 'pending',
+      razorpayOrderId: rpOrder.id,
+    });
+
+    res.status(201).json({
+      success: true,
+      orderId: order._id,
+      razorpayOrderId: rpOrder.id,
+      amount: totalAmount,
+      currency: 'INR',
+      key: process.env.RAZORPAY_KEY_ID || 'sandbox_key', // Client needs key to open Razorpay checkout
+      isMock: rpOrder.isMock || false,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Verify Razorpay payment status
+ * @route   POST /api/orders/verify
+ * @access  Private
+ */
+export const verifyPayment = async (req, res) => {
+  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+  try {
+    if (!isDbConnected()) {
+      const order = mockDb.orders.find(o => o.razorpayOrderId === razorpayOrderId);
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+
+      order.paymentStatus = 'paid';
+      order.razorpayPaymentId = razorpayPaymentId;
+      order.razorpaySignature = razorpaySignature;
+
+      // Update coupon usage
+      if (order.couponApplied) {
+        const coupon = mockDb.coupons.find(c => c.code === order.couponApplied);
+        if (coupon) coupon.usedCount += 1;
+      }
+
+      // Generate mock links
+      const downloadLinks = order.items.map(item => ({
+        title: item.titleAtPurchase,
+        downloadUrl: `http://localhost:5000/api/projects/download-secure?token=mock_download_token_${item.project}`
+      }));
+
+      // Log email content
+      await sendPurchaseEmail(req.user.email, req.user.name, order, downloadLinks);
+
+      return res.json({
+        success: true,
+        message: 'Payment verified successfully and downloads unlocked.',
+        order
+      });
+    }
+
+    // 1. Verify signatures
+    const isValid = verifyRazorpaySignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+
+    if (!isValid) {
+      return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
+
+    // 2. Find order and update status
+    const order = await Order.findOne({ razorpayOrderId }).populate('items.project');
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.paymentStatus === 'paid') {
+      return res.json({ success: true, message: 'Payment already verified', order });
+    }
+
+    order.paymentStatus = 'paid';
+    order.razorpayPaymentId = razorpayPaymentId;
+    order.razorpaySignature = razorpaySignature;
+    await order.save();
+
+    // 3. Update coupon usage
+    if (order.couponApplied) {
+      await Coupon.findOneAndUpdate(
+        { code: order.couponApplied },
+        { $inc: { usedCount: 1 } }
+      );
+    }
+
+    // 4. Generate download links & send confirmation email
+    const downloadLinks = [];
+    for (const item of order.items) {
+      const downloadUrl = generateSignedDownloadUrl(
+        item.project.fileKey,
+        item.project.fileName,
+        order.user.toString(),
+        item.project._id.toString(),
+        order._id.toString()
+      );
+      downloadLinks.push({
+        title: item.project.title,
+        downloadUrl,
+      });
+    }
+
+    // Fetch user details for emailing
+    const user = await User.findById(order.user);
+    if (user) {
+      await sendPurchaseEmail(user.email, user.name, order, downloadLinks);
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment verified successfully and downloads unlocked.',
+      order,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get logged in user's purchased items
+ * @route   GET /api/orders/my-purchases
+ * @access  Private
+ */
+export const getMyPurchasedProjects = async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      const userOrders = mockDb.orders.filter(o => o.user === req.user._id && o.paymentStatus === 'paid');
+      const purchases = [];
+      const seenIds = new Set();
+      
+      // Auto-unlock first 3 projects for testing download links immediately without checkout
+      if (req.user.email === 'user@marketplace.com' && userOrders.length === 0) {
+        mockDb.projects.slice(0, 3).forEach(p => {
+          purchases.push({
+            project: p,
+            purchasedAt: new Date(),
+            orderId: 'order_seed_mock',
+            pricePaid: p.price
+          });
+        });
+        return res.json({ success: true, count: purchases.length, purchases });
+      }
+
+      for (const order of userOrders) {
+        for (const item of order.items) {
+          const fullProj = mockDb.projects.find(p => p._id === item.project);
+          if (fullProj && !seenIds.has(fullProj._id)) {
+            seenIds.add(fullProj._id);
+            purchases.push({
+              project: fullProj,
+              purchasedAt: order.createdAt,
+              orderId: order._id,
+              pricePaid: item.priceAtPurchase
+            });
+          }
+        }
+      }
+      return res.json({ success: true, count: purchases.length, purchases });
+    }
+
+    // Get all paid orders for the user
+    const orders = await Order.find({ user: req.user._id, paymentStatus: 'paid' }).populate('items.project');
+    
+    // Extract unique projects
+    const purchasedProjects = [];
+    const seenIds = new Set();
+
+    for (const order of orders) {
+      for (const item of order.items) {
+        if (item.project && !seenIds.has(item.project._id.toString())) {
+          seenIds.add(item.project._id.toString());
+          purchasedProjects.push({
+            project: item.project,
+            purchasedAt: order.createdAt,
+            orderId: order._id,
+            pricePaid: item.priceAtPurchase,
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, count: purchasedProjects.length, purchases: purchasedProjects });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get user's download logs/history
+ * @route   GET /api/orders/download-history
+ * @access  Private
+ */
+export const getDownloadHistory = async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      return res.json({ success: true, count: mockDb.downloads.length, history: mockDb.downloads });
+    }
+
+    const logs = await DownloadLog.find({ user: req.user._id })
+      .populate('project', 'title category')
+      .sort({ lastDownloadedAt: -1 });
+
+    res.json({ success: true, count: logs.length, history: logs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get all orders (Admin only)
+ * @route   GET /api/orders
+ * @access  Private/Admin
+ */
+export const getAllOrders = async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      // populate users manually
+      const populated = mockDb.orders.map(o => {
+        const u = mockDb.users.find(usr => usr._id === o.user);
+        return {
+          ...o,
+          user: u ? { name: u.name, email: u.email } : null
+        };
+      });
+      return res.json({ success: true, count: populated.length, orders: populated });
+    }
+
+    const orders = await Order.find()
+      .populate('user', 'name email')
+      .populate('items.project', 'title category price')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, count: orders.length, orders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
