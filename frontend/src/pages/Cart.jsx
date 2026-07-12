@@ -6,7 +6,7 @@ import { request } from '../utils/api';
 import { ShoppingCart, Trash2, Tag, Percent, ArrowRight, ShieldCheck, QrCode } from 'lucide-react';
 
 // Configure your personal UPI ID here
-const MERCHANT_UPI_ID = 'khushaljangra@ybl';
+const MERCHANT_UPI_ID = 'choyal034-1@oksbi';
 
 const Cart = () => {
   const { user } = useAuth();
@@ -401,6 +401,34 @@ const Cart = () => {
               <strong style={{ fontSize: '26px', color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>INR {total}</strong>
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginTop: '4px' }}>
                 UPI ID: <code style={{ color: 'var(--primary)' }}>{MERCHANT_UPI_ID}</code>
+              </span>
+            </div>
+
+            {/* Mobile Deep Link Button (triggers native UPI apps like PhonePe on phones) */}
+            <div style={{ marginBottom: '24px' }}>
+              <a
+                href={`upi://pay?pa=${MERCHANT_UPI_ID}&pn=Khushal%20Jangra&am=${total}&cu=INR&tn=ApexMarket_Order`}
+                className="btn"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 20px',
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  background: '#5f259f', // PhonePe Purple
+                  color: 'white',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  boxShadow: 'var(--shadow-sm)',
+                  width: '100%',
+                  justifyContent: 'center'
+                }}
+              >
+                📲 Pay via PhonePe / UPI App
+              </a>
+              <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                (Tapping this will open PhonePe/UPI apps directly on mobile)
               </span>
             </div>
 
