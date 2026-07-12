@@ -111,7 +111,7 @@ const Landing = () => {
             </p>
 
             {/* Central Search Bar (Udemy Style) */}
-            <form onSubmit={handleSearchSubmit} style={{
+            <form onSubmit={handleSearchSubmit} className="hero-search-form" style={{
               display: 'flex',
               background: 'var(--bg-secondary)',
               border: '1px solid var(--border)',
