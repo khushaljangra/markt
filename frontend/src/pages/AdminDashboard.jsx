@@ -38,6 +38,7 @@ const AdminDashboard = () => {
   const [techStack, setTechStack] = useState('');
   const [previewUrls, setPreviewUrls] = useState('');
   const [file, setFile] = useState(null);
+  const [externalDownloadUrl, setExternalDownloadUrl] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -143,8 +144,8 @@ const AdminDashboard = () => {
     setFormError('');
     setFormSuccess('');
     
-    if (!file) {
-      setFormError('Please select a project ZIP/PDF file to upload.');
+    if (!file && !externalDownloadUrl) {
+      setFormError('Please select a project ZIP/PDF file to upload or enter a Google Drive link.');
       return;
     }
 
@@ -156,7 +157,10 @@ const AdminDashboard = () => {
       formData.append('price', price);
       formData.append('category', category);
       formData.append('techStack', techStack);
-      formData.append('file', file);
+      formData.append('externalDownloadUrl', externalDownloadUrl);
+      if (file) {
+        formData.append('file', file);
+      }
       
       if (previewUrls) {
         const urls = previewUrls.split('\n').map((u) => u.trim()).filter((u) => u);
@@ -174,6 +178,7 @@ const AdminDashboard = () => {
         setTechStack('');
         setPreviewUrls('');
         setFile(null);
+        setExternalDownloadUrl('');
         // Refresh products list & stats
         await fetchProjects();
         await fetchDashboardStats();
@@ -620,10 +625,20 @@ const AdminDashboard = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>Project Zip/PDF File</label>
+                <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>Google Drive / External Link (Preferred for Render)</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                  value={externalDownloadUrl}
+                  onChange={(e) => setExternalDownloadUrl(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>Project Zip/PDF File (Optional if Link provided)</label>
                 <input
                   type="file"
-                  required
                   onChange={(e) => setFile(e.target.files[0])}
                   style={{
                     fontSize: '12px',
@@ -634,7 +649,7 @@ const AdminDashboard = () => {
               </div>
 
               <button type="submit" disabled={formLoading} className="btn btn-primary" style={{ padding: '12px', width: '100%', marginTop: '10px' }}>
-                {formLoading ? 'Uploading File...' : 'Publish Product'}
+                {formLoading ? 'Publishing...' : 'Publish Product'}
               </button>
             </form>
           </div>

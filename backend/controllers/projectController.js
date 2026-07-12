@@ -124,14 +124,16 @@ export const getProjectById = async (req, res) => {
  */
 export const createProject = async (req, res) => {
   try {
-    const { title, description, price, category, techStack, previewUrls } = req.body;
+    const { title, description, price, category, techStack, previewUrls, externalDownloadUrl } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Please upload a project file' });
+    if (!req.file && !externalDownloadUrl) {
+      return res.status(400).json({ success: false, message: 'Please upload a project file or provide a Google Drive / external download link.' });
     }
 
-    // Save uploaded file to secure storage
-    const fileData = await saveFileToStorage(req.file);
+    let fileData = { fileKey: '', fileName: 'external-link', fileSize: '0 MB' };
+    if (req.file) {
+      fileData = await saveFileToStorage(req.file);
+    }
 
     // Parse tech stack (assumed sent as comma-separated or JSON string)
     let processedTechStack = [];
@@ -161,6 +163,7 @@ export const createProject = async (req, res) => {
         fileKey: fileData.fileKey,
         fileName: fileData.fileName,
         fileSize: fileData.fileSize,
+        externalDownloadUrl: externalDownloadUrl || '',
         createdBy: req.user?._id || 'mock_admin_id',
         ratings: { average: 5, count: 1 },
         downloadCount: 0,
@@ -197,6 +200,7 @@ export const createProject = async (req, res) => {
       fileKey: fileData.fileKey,
       fileName: fileData.fileName,
       fileSize: fileData.fileSize,
+      externalDownloadUrl: externalDownloadUrl || '',
       createdBy: creatorId,
       versions: [
         {
@@ -221,18 +225,53 @@ export const createProject = async (req, res) => {
  */
 export const updateProject = async (req, res) => {
   try {
+    const { title, description, price, category, techStack, previewUrls, externalDownloadUrl } = req.body;
+
+    if (!isDbConnected()) {
+      const project = mockDb.projects.find(p => p._id === req.params.id);
+      if (!project) {
+        return res.status(404).json({ success: false, message: 'Project not found' });
+      }
+
+      project.title = title || project.title;
+      project.description = description || project.description;
+      project.price = price !== undefined ? Number(price) : project.price;
+      project.category = category || project.category;
+      project.externalDownloadUrl = externalDownloadUrl !== undefined ? externalDownloadUrl : (project.externalDownloadUrl || '');
+
+      if (techStack) {
+        project.techStack = typeof techStack === 'string'
+          ? techStack.split(',').map((s) => s.trim())
+          : techStack;
+      }
+
+      if (previewUrls) {
+        project.previewUrls = typeof previewUrls === 'string'
+          ? JSON.parse(previewUrls)
+          : previewUrls;
+      }
+
+      if (req.file) {
+        const fileData = await saveFileToStorage(req.file);
+        project.fileKey = fileData.fileKey;
+        project.fileName = fileData.fileName;
+        project.fileSize = fileData.fileSize;
+      }
+
+      return res.json({ success: true, project });
+    }
+
     const project = await Project.findById(req.params.id);
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const { title, description, price, category, techStack, previewUrls } = req.body;
-
     project.title = title || project.title;
     project.description = description || project.description;
     project.price = price !== undefined ? Number(price) : project.price;
     project.category = category || project.category;
+    project.externalDownloadUrl = externalDownloadUrl !== undefined ? externalDownloadUrl : (project.externalDownloadUrl || '');
 
     if (techStack) {
       project.techStack = typeof techStack === 'string'
@@ -375,6 +414,9 @@ export const getDownloadLink = async (req, res) => {
       if (!project) {
         return res.status(404).json({ success: false, message: 'Project not found' });
       }
+      if (project.externalDownloadUrl) {
+        return res.json({ success: true, downloadUrl: project.externalDownloadUrl });
+      }
       const downloadUrl = `${hostUrl}/api/projects/download-secure?token=mock_download_token_${projectId}`;
       return res.json({ success: true, downloadUrl });
     }
@@ -396,6 +438,10 @@ export const getDownloadLink = async (req, res) => {
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    if (project.externalDownloadUrl) {
+      return res.json({ success: true, downloadUrl: project.externalDownloadUrl });
     }
 
     let fileKey = project.fileKey;

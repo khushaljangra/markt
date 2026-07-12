@@ -58,15 +58,19 @@ const projectSchema = new mongoose.Schema(
     ],
     fileKey: {
       type: String,
-      required: [true, 'Please upload a project file'],
+      default: '',
     },
     fileName: {
       type: String,
-      required: true,
+      default: 'external-link',
     },
     fileSize: {
       type: String, // formatted string, e.g. "2.4 MB"
       default: 'Unknown',
+    },
+    externalDownloadUrl: {
+      type: String,
+      default: '',
     },
     versions: [versionSchema],
     ratings: {
