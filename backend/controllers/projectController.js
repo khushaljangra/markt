@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import Project from '../models/Project.js';
@@ -148,6 +149,44 @@ export const createProject = async (req, res) => {
         : previewUrls;
     }
 
+    if (!isDbConnected()) {
+      const mockProject = {
+        _id: `proj_mock_${Date.now()}`,
+        title,
+        description,
+        price: Number(price),
+        category,
+        techStack: processedTechStack,
+        previewUrls: processedPreviewUrls,
+        fileKey: fileData.fileKey,
+        fileName: fileData.fileName,
+        fileSize: fileData.fileSize,
+        createdBy: req.user?._id || 'mock_admin_id',
+        ratings: { average: 5, count: 1 },
+        downloadCount: 0,
+        versions: [
+          {
+            version: 'v1.0.0',
+            fileKey: fileData.fileKey,
+            fileName: fileData.fileName,
+            releaseNotes: 'Initial release',
+          },
+        ],
+      };
+      mockDb.projects.unshift(mockProject);
+      return res.status(201).json({ success: true, project: mockProject });
+    }
+
+    // DB Mode: Ensure createdBy is a valid ObjectId
+    let creatorId = req.user._id;
+    if (!mongoose.Types.ObjectId.isValid(creatorId)) {
+      const User = mongoose.model('User');
+      const adminUser = await User.findOne({ role: 'admin' });
+      if (adminUser) {
+        creatorId = adminUser._id;
+      }
+    }
+
     const project = await Project.create({
       title,
       description,
@@ -158,7 +197,7 @@ export const createProject = async (req, res) => {
       fileKey: fileData.fileKey,
       fileName: fileData.fileName,
       fileSize: fileData.fileSize,
-      createdBy: req.user._id,
+      createdBy: creatorId,
       versions: [
         {
           version: 'v1.0.0',
