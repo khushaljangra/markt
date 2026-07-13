@@ -197,11 +197,11 @@ const Landing = () => {
 
       <div style={{ margin: '40px 0' }} />
 
-      {/* Referral Program Banner */}
-      <section className="container">
+      {/* Contact Support Section */}
+      <section className="container" style={{ marginBottom: '60px' }}>
         <div className="glass-card" style={{
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.25)',
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
           padding: '48px',
           borderRadius: '24px',
           display: 'flex',
@@ -211,17 +211,22 @@ const Landing = () => {
           gap: '30px'
         }}>
           <div style={{ maxWidth: '600px' }}>
-            <span className="badge badge-success" style={{ marginBottom: '16px' }}>Earn Passive Credits</span>
+            <span className="badge badge-primary" style={{ marginBottom: '16px' }}>24/7 Support Desk</span>
             <h2 style={{ fontSize: '30px', color: 'var(--text-primary)', marginBottom: '12px' }}>
-              Invite Friends & Learn for Free!
+              Have Questions or Need Support?
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '15px', lineHeight: 1.6 }}>
-              Share your referral link with developer friends. Every time a friend registers with your link, we credit <strong>INR 100</strong> straight to your wallet balance. Buy premium projects for free!
+              Have queries about source code setups, custom development bids, or payment verifications? Get in touch with our tech team. We respond within 1-2 hours.
             </p>
           </div>
-          <Link to="/register" className="btn btn-primary" style={{ padding: '14px 28px', whiteSpace: 'nowrap' }}>
-            Get Your Code Now <ArrowRight size={18} />
-          </Link>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <a href="mailto:choyal034-1@oksbi" className="btn btn-secondary" style={{ padding: '14px 24px' }}>
+              ✉️ Email Support
+            </a>
+            <Link to="/support" className="btn btn-primary" style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              💬 Open Live Chat <ArrowRight size={18} />
+            </Link>
+          </div>
         </div>
       </section>
     </div>
