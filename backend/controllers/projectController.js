@@ -522,8 +522,8 @@ export const downloadProjectSecure = async (req, res) => {
     }
 
     // Check if order exists and is paid
-    const order = await Order.findById(orderId);
-    if (!order || order.paymentStatus !== 'paid' || order.user.toString() !== userId) {
+    const order = await Order.findById(orderId).populate('user');
+    if (!order || order.paymentStatus !== 'paid' || order.user._id.toString() !== userId) {
       return res.status(403).send('Invalid transaction context');
     }
 
@@ -540,22 +540,31 @@ export const downloadProjectSecure = async (req, res) => {
         project: projectId,
         order: orderId,
         downloadCount: 0,
+        maxDownloadsAllowed: 3,
       });
     }
 
     if (log.downloadCount >= log.maxDownloadsAllowed) {
-      return res.status(429).send('Download limit exceeded (Max 5 attempts allowed)');
+      return res.status(429).send('Download limit exceeded (Max 3 attempts allowed)');
+    }
+
+    // IP-based restriction (Max 2 unique IPs allowed)
+    const clientIpRaw = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const clientIp = clientIpRaw ? clientIpRaw.split(',')[0].trim() : 'Unknown IP';
+
+    if (clientIp && clientIp !== 'Unknown IP') {
+      const isNewIp = !log.ipAddresses.includes(clientIp);
+      if (isNewIp) {
+        if (log.ipAddresses.length >= 2) {
+          return res.status(403).send('Download blocked: Link accessed from too many different IP locations. Link sharing is prohibited.');
+        }
+        log.ipAddresses.push(clientIp);
+      }
     }
 
     // Increment downloads
     log.downloadCount += 1;
     log.lastDownloadedAt = new Date();
-    
-    // Log client IP
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    if (clientIp) {
-      log.ipAddresses.push(clientIp);
-    }
     await log.save();
 
     // Increment global download count on the project
@@ -565,6 +574,38 @@ export const downloadProjectSecure = async (req, res) => {
     const filePath = getSecureFilePath(fileKey);
     if (!fs.existsSync(filePath)) {
       return res.status(404).send('Physical file not found on server storage');
+    }
+
+    // Watermarking ZIP files dynamically using adm-zip
+    if (originalName.toLowerCase().endsWith('.zip')) {
+      try {
+        const AdmZip = (await import('adm-zip')).default;
+        const zip = new AdmZip(filePath);
+
+        const licenseContent = `--------------------------------------------------
+APEXMARKET SECURE DIGITAL LICENSE & WATERMARK
+--------------------------------------------------
+Product ID: ${projectId}
+Product Name: ${originalName}
+Buyer Name: ${order.user?.name || 'Verified Customer'}
+Buyer Email: ${order.user?.email || 'N/A'}
+Purchase UTR/Order: ${order.transactionRef || order._id}
+Purchase Date: ${order.createdAt}
+License Verification IP: ${clientIp}
+
+This file is digitally watermarked. Distribution or sharing of this source code or document is strictly prohibited and subject to legal actions under DMCA / Copyright laws.
+--------------------------------------------------`;
+
+        zip.addFile('LICENSE_VERIFICATION.txt', Buffer.from(licenseContent, 'utf-8'), 'Secure license information');
+        const zipBuffer = zip.toBuffer();
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${originalName}"`);
+        return res.send(zipBuffer);
+      } catch (zipError) {
+        console.error('ZIP Watermarking failed, falling back to standard download:', zipError.message);
+        // Fallback to standard download below
+      }
     }
 
     res.download(filePath, originalName);

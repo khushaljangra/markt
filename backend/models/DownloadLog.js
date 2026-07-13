@@ -23,7 +23,7 @@ const downloadLogSchema = new mongoose.Schema(
     },
     maxDownloadsAllowed: {
       type: Number,
-      default: 5, // Limit downloads to 5 times per purchase by default
+      default: 3, // Limit downloads to 3 times per purchase by default
     },
     ipAddresses: [
       {
