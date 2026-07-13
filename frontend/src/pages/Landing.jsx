@@ -77,124 +77,84 @@ const Landing = () => {
         background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, rgba(11, 15, 25, 0) 100%)',
         borderBottom: '1px solid var(--border)'
       }}>
-        <div className="container responsive-two-col" style={{
-          alignItems: 'center',
+        <div className="container" style={{
+          textAlign: 'center',
+          maxWidth: '800px',
+          margin: '0 auto'
         }}>
           
-          {/* Left Text Column */}
-          <div style={{ textAlign: 'left' }}>
-            <span className="badge badge-primary" style={{ marginBottom: '16px', padding: '6px 12px', fontSize: '12px' }}>
-              Over 12,500+ developers enrolled
+          <span className="badge badge-primary" style={{ marginBottom: '16px', padding: '6px 12px', fontSize: '12px' }}>
+            Over 12,500+ developers enrolled
+          </span>
+          <h1 style={{
+            fontSize: '48px',
+            lineHeight: 1.15,
+            fontWeight: 800,
+            marginBottom: '20px',
+            color: 'var(--text-primary)',
+            letterSpacing: '-1px'
+          }}>
+            Learn from <br />
+            <span style={{
+              background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>Real Production-Ready Source Code</span>
+          </h1>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '16px',
+            lineHeight: 1.6,
+            marginBottom: '32px'
+          }}>
+            Skip simple Hello World tutorials. Study, modify, and build with production-grade templates, starter scripts, PDFs, and complete SaaS source code. Build faster, learn deeper.
+          </p>
+
+          {/* Central Search Bar (Udemy Style) */}
+          <form onSubmit={handleSearchSubmit} className="hero-search-form" style={{
+            display: 'flex',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            padding: '6px',
+            maxWidth: '520px',
+            margin: '0 auto 24px auto',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ position: 'relative', flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+              <Search size={18} style={{ color: 'var(--text-muted)', marginLeft: '12px', position: 'absolute' }} />
+              <input
+                type="text"
+                placeholder="What do you want to build today? (e.g. AWS, React)..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '10px 10px 10px 40px',
+                  outline: 'none',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px', borderRadius: '6px' }}>
+              Search
+            </button>
+          </form>
+
+          {/* Trust Bulletpoints */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', color: 'var(--text-secondary)', fontSize: '13px', justifyContent: 'center' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> Full Source Code
             </span>
-            <h1 style={{
-              fontSize: '48px',
-              lineHeight: 1.15,
-              fontWeight: 800,
-              marginBottom: '20px',
-              color: 'var(--text-primary)',
-              letterSpacing: '-1px'
-            }}>
-              Learn from <br />
-              <span style={{
-                background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>Real Production-Ready Source Code</span>
-            </h1>
-            <p style={{
-              color: 'var(--text-secondary)',
-              fontSize: '16px',
-              lineHeight: 1.6,
-              marginBottom: '32px'
-            }}>
-              Skip simple Hello World tutorials. Study, modify, and build with production-grade templates, starter scripts, PDFs, and complete SaaS source code. Build faster, learn deeper.
-            </p>
-
-            {/* Central Search Bar (Udemy Style) */}
-            <form onSubmit={handleSearchSubmit} className="hero-search-form" style={{
-              display: 'flex',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              padding: '6px',
-              maxWidth: '520px',
-              marginBottom: '24px',
-              boxShadow: 'var(--shadow-sm)'
-            }}>
-              <div style={{ position: 'relative', flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-                <Search size={18} style={{ color: 'var(--text-muted)', marginLeft: '12px', position: 'absolute' }} />
-                <input
-                  type="text"
-                  placeholder="What do you want to build today? (e.g. AWS, React)..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  style={{
-                    width: '100%',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    padding: '10px 10px 10px 40px',
-                    outline: 'none',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '14px', borderRadius: '6px' }}>
-                Search
-              </button>
-            </form>
-
-            {/* Trust Bulletpoints */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> Full Source Code
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> Lifetime Access
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> Clean Architectures
-              </span>
-            </div>
-          </div>
-
-          {/* Right Banner/Graphic Column */}
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <div className="glass-card" style={{
-              padding: '30px',
-              width: '100%',
-              maxWidth: '420px',
-              borderRadius: '20px',
-              border: '1px solid rgba(99, 102, 241, 0.2)',
-              position: 'relative'
-            }}>
-              <span style={{
-                position: 'absolute',
-                top: '-15px',
-                right: '20px',
-                background: 'var(--secondary)',
-                color: 'white',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 700
-              }}>77% OFF Sandbox</span>
-              
-              <h3 style={{ fontSize: '18px', color: 'var(--text-primary)', marginBottom: '12px' }}>Apex Developer Pass</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px' }}>Get lifetime download access to premium SaaS starter templates and microservices codebases.</p>
-              
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginBottom: '20px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Sandbox Seeding Offer</span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <strong style={{ fontSize: '28px', color: 'var(--text-primary)' }}>INR 299</strong>
-                  <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', fontSize: '14px' }}>INR 1,299</span>
-                </div>
-              </div>
-
-              <Link to="/projects" className="btn btn-primary" style={{ width: '100%', padding: '12px' }}>
-                Explore Sandbox Catalog
-              </Link>
-            </div>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> Lifetime Access
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={16} style={{ color: 'var(--success)' }} /> Clean Architectures
+            </span>
           </div>
 
         </div>
