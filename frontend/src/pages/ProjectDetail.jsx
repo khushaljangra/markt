@@ -14,6 +14,9 @@ import {
   Calendar,
   MessageSquare,
   Sparkles,
+  Lightbulb,
+  ThumbsUp,
+  PlusCircle,
 } from 'lucide-react';
 
 const ProjectDetail = () => {
@@ -33,6 +36,15 @@ const ProjectDetail = () => {
   const [comment, setComment] = useState('');
   const [reviewSubmitLoading, setReviewSubmitLoading] = useState(false);
   const [reviewError, setReviewError] = useState('');
+
+  // Feature Request States
+  const [featureRequests, setFeatureRequests] = useState([]);
+  const [reqTitle, setReqTitle] = useState('');
+  const [reqDesc, setReqDesc] = useState('');
+  const [reqBid, setReqBid] = useState('');
+  const [reqLoading, setReqLoading] = useState(false);
+  const [reqError, setReqError] = useState('');
+  const [reqSuccess, setReqSuccess] = useState('');
 
   // Active Image Preview Index
   const [activeImgIndex, setActiveImgIndex] = useState(0);
@@ -64,6 +76,12 @@ const ProjectDetail = () => {
             setUserAlreadyReviewed(reviewed);
           }
         }
+      }
+
+      // 4. Fetch feature requests
+      const reqsData = await request(`/feature-requests/project/${id}`, 'GET');
+      if (reqsData.success) {
+        setFeatureRequests(reqsData.featureRequests);
       }
     } catch (error) {
       console.error('Error loading project details:', error.message);
@@ -147,6 +165,58 @@ const ProjectDetail = () => {
       setReviewError(error.message || 'Failed to submit review');
     } finally {
       setReviewSubmitLoading(false);
+    }
+  };
+
+  const handleFeatureRequestSubmit = async (e) => {
+    e.preventDefault();
+    setReqError('');
+    setReqSuccess('');
+    setReqLoading(true);
+
+    try {
+      const data = await request('/feature-requests', 'POST', {
+        projectId: id,
+        title: reqTitle,
+        description: reqDesc,
+        bidAmount: Number(reqBid),
+      });
+
+      if (data.success) {
+        setReqTitle('');
+        setReqDesc('');
+        setReqBid('');
+        setReqSuccess('Feature request submitted successfully! Other developers can now upvote it.');
+        // Refresh feature requests
+        const reqsData = await request(`/feature-requests/project/${id}`, 'GET');
+        if (reqsData.success) {
+          setFeatureRequests(reqsData.featureRequests);
+        }
+      }
+    } catch (err) {
+      setReqError(err.message || 'Failed to submit feature request');
+    } finally {
+      setReqLoading(false);
+    }
+  };
+
+  const handleUpvoteFeatureRequest = async (requestId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const data = await request(`/feature-requests/${requestId}/upvote`, 'POST');
+      if (data.success) {
+        // Refresh list
+        const reqsData = await request(`/feature-requests/project/${id}`, 'GET');
+        if (reqsData.success) {
+          setFeatureRequests(reqsData.featureRequests);
+        }
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to upvote');
     }
   };
 
@@ -372,6 +442,156 @@ const ProjectDetail = () => {
                     </p>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Custom Feature Requests & Bidding Section */}
+          <div className="glass-card" style={{ marginTop: '40px', padding: '30px', borderRadius: '16px' }}>
+            <h2 style={{ fontSize: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Lightbulb size={20} style={{ color: 'var(--accent)' }} /> Feature Extensions & Bids
+            </h2>
+
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5, marginBottom: '24px' }}>
+              Want a custom feature (like Google Login or Excel Export) added to this project? Submitting a request with an offer (bid) lets the admin know what custom features to build next. Other buyers can upvote your request!
+            </p>
+
+            {/* Feature Request Form */}
+            {hasPurchased ? (
+              <form onSubmit={handleFeatureRequestSubmit} style={{
+                background: 'var(--bg-tertiary)',
+                padding: '20px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <PlusCircle size={14} style={{ color: 'var(--primary)' }} /> Request Custom Extension
+                </h3>
+
+                {reqError && <div style={{ color: 'var(--error)', fontSize: '12px', marginBottom: '12px' }}>{reqError}</div>}
+                {reqSuccess && <div style={{ color: 'var(--success)', fontSize: '12px', marginBottom: '12px', fontWeight: 600 }}>{reqSuccess}</div>}
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>
+                    Feature Title
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="form-input"
+                    placeholder="E.g., Add Excel export for attendance report"
+                    value={reqTitle}
+                    onChange={(e) => setReqTitle(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>
+                    Extension Details / Requirements
+                  </label>
+                  <textarea
+                    required
+                    className="form-input"
+                    rows="3"
+                    placeholder="Describe exactly what needs to be added..."
+                    value={reqDesc}
+                    onChange={(e) => setReqDesc(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>
+                    Your Offer Amount (INR)
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text-muted)' }}>
+                      INR
+                    </span>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      className="form-input"
+                      style={{ paddingLeft: '44px' }}
+                      placeholder="E.g., 500"
+                      value={reqBid}
+                      onChange={(e) => setReqBid(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" disabled={reqLoading} className="btn btn-primary" style={{ padding: '10px 20px', fontSize: '13px' }}>
+                  {reqLoading ? 'Submitting Request...' : 'Post Bid Offer'}
+                </button>
+              </form>
+            ) : (
+              <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', padding: '16px', borderRadius: '8px', marginBottom: '24px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                🔒 <strong>Purchase this project</strong> to request custom feature extensions.
+              </div>
+            )}
+
+            {/* List of Feature Requests */}
+            {featureRequests.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', fontSize: '13px' }}>
+                No custom feature requests posted yet.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {featureRequests.map((reqItem) => {
+                  const hasUpvoted = user && reqItem.upvotes?.includes(user._id);
+                  return (
+                    <div key={reqItem._id} style={{
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--border)',
+                      padding: '20px',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '20px'
+                    }}>
+                      <div style={{ flexGrow: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                          <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>{reqItem.title}</strong>
+                          <span className={`badge badge-${reqItem.status === 'completed' ? 'success' : reqItem.status === 'accepted' ? 'accent' : 'primary'}`} style={{ fontSize: '10px' }}>
+                            {reqItem.status}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 600 }}>
+                            Offer: INR {reqItem.bidAmount}
+                          </span>
+                        </div>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.4, margin: '6px 0 10px 0' }}>
+                          {reqItem.description}
+                        </p>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Requested by {reqItem.user?.name || 'Customer'}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleUpvoteFeatureRequest(reqItem._id)}
+                        className={`btn ${hasUpvoted ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          minWidth: '50px',
+                          background: hasUpvoted ? 'var(--primary)' : 'var(--bg-secondary)',
+                          border: '1px solid var(--border)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <ThumbsUp size={14} />
+                        <strong>{reqItem.upvotes?.length || 0}</strong>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

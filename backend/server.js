@@ -13,6 +13,7 @@ import couponRoutes from './routes/couponRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import featureRequestRoutes from './routes/featureRequestRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -263,6 +264,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/feature-requests', featureRequestRoutes);
 
 // Root path handler
 app.get('/', (req, res) => {

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { request } from '../utils/api';
-import { Tag, X } from 'lucide-react';
+import { Tag, X, Clock } from 'lucide-react';
 
 const PromoBanner = () => {
   const [activeCoupon, setActiveCoupon] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
     const fetchActiveCoupon = async () => {
@@ -28,6 +29,37 @@ const PromoBanner = () => {
     fetchActiveCoupon();
   }, []);
 
+  // Countdown timer effect
+  useEffect(() => {
+    if (!activeCoupon || !isVisible) return;
+
+    const updateTimer = () => {
+      const difference = new Date(activeCoupon.expiryDate) - new Date();
+      if (difference <= 0) {
+        setTimeLeft('Expired');
+        setIsVisible(false);
+        return;
+      }
+
+      // Calculate hours, minutes, seconds remaining
+      const totalHours = Math.floor(difference / (1000 * 60 * 60));
+      const mins = Math.floor((difference / (1000 * 60)) % 60);
+      const secs = Math.floor((difference / 1000) % 60);
+
+      // Pad with leading zeros
+      const formatted = `${totalHours.toString().padStart(2, '0')}h ${mins
+        .toString()
+        .padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
+
+      setTimeLeft(formatted);
+    };
+
+    updateTimer(); // Initial call
+    const intervalId = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [activeCoupon, isVisible]);
+
   const handleDismiss = () => {
     if (activeCoupon) {
       sessionStorage.setItem(`dismissed_coupon_${activeCoupon.code}`, 'true');
@@ -36,11 +68,6 @@ const PromoBanner = () => {
   };
 
   if (!isVisible || !activeCoupon) return null;
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  };
 
   const discountText =
     activeCoupon.discountType === 'percentage'
@@ -73,9 +100,23 @@ const PromoBanner = () => {
         <span style={{ background: 'rgba(255, 255, 255, 0.2)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Code: <strong style={{ color: '#fef08a' }}>{activeCoupon.code}</strong>
         </span>
-        <span style={{ fontSize: '12px', opacity: 0.9 }}>
-          (Ends {formatDate(activeCoupon.expiryDate)})
-        </span>
+        
+        {timeLeft && (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: 'rgba(0, 0, 0, 0.25)',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            marginLeft: '6px',
+            border: '1px solid rgba(255, 255, 255, 0.15)'
+          }}>
+            <Clock size={12} />
+            Ends in: <strong style={{ color: '#fef08a', fontFamily: 'monospace' }}>{timeLeft}</strong>
+          </span>
+        )}
       </div>
 
       <button

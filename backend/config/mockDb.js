@@ -204,5 +204,6 @@ export const mockDb = {
     { _id: 'rev_1', user: { _id: 'mock_user_id', name: 'John Doe' }, project: 'proj_mock_1', rating: 5, comment: 'Outstanding template! Easy to configure Lambda actions.', createdAt: new Date() }
   ],
   support: [],
-  downloads: []
+  downloads: [],
+  featureRequests: []
 };
