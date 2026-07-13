@@ -92,6 +92,17 @@ export const addReview = async (req, res) => {
       comment,
     });
 
+    // 5. Recalculate average rating and update Project
+    const projectReviews = await Review.find({ project: projectId });
+    const count = projectReviews.length;
+    const avg = projectReviews.reduce((acc, curr) => acc + curr.rating, 0) / count;
+    
+    project.ratings = {
+      average: Math.round(avg * 10) / 10,
+      count: count,
+    };
+    await project.save();
+
     const populatedReview = await review.populate('user', 'name');
 
     res.status(201).json({ success: true, review: populatedReview });
@@ -144,7 +155,22 @@ export const deleteReview = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this review' });
     }
 
+    const projectId = review.project;
     await review.deleteOne();
+
+    // Recalculate average rating and update Project
+    const projectReviews = await Review.find({ project: projectId });
+    const count = projectReviews.length;
+    let average = 0;
+    if (count > 0) {
+      const avg = projectReviews.reduce((acc, curr) => acc + curr.rating, 0) / count;
+      average = Math.round(avg * 10) / 10;
+    }
+    
+    await Project.findByIdAndUpdate(projectId, {
+      ratings: { average, count }
+    });
+
     res.json({ success: true, message: 'Review deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
