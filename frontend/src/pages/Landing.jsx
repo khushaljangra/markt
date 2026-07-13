@@ -220,7 +220,7 @@ const Landing = () => {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <a href="mailto:choyal034-1@oksbi" className="btn btn-secondary" style={{ padding: '14px 24px' }}>
+            <a href="mailto:tempphone300@gmail.com" className="btn btn-secondary" style={{ padding: '14px 24px' }}>
               ✉️ Email Support
             </a>
             <Link to="/support" className="btn btn-primary" style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
