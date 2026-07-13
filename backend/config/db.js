@@ -1,4 +1,14 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Bypass local ISP SRV lookup blocks by using Google DNS
+if (dns && dns.setServers) {
+  try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+  } catch (err) {
+    // Ignore DNS error
+  }
+}
 
 const connectDB = async () => {
   try {
