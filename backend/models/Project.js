@@ -7,11 +7,11 @@ const versionSchema = new mongoose.Schema({
   },
   fileKey: {
     type: String,
-    required: true,
+    default: '',
   },
   fileName: {
     type: String,
-    required: true,
+    default: 'external-link',
   },
   releaseNotes: {
     type: String,
