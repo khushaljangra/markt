@@ -7,6 +7,7 @@ import {
   Ticket,
   PlusCircle,
   Trash2,
+  Edit2,
   FileCheck,
   CheckCircle,
   TrendingUp,
@@ -60,6 +61,9 @@ const AdminDashboard = () => {
   // Feature Requests State
   const [featureRequests, setFeatureRequests] = useState([]);
   const [featureRequestsLoading, setFeatureRequestsLoading] = useState(false);
+
+  // Edit Project State
+  const [editingProject, setEditingProject] = useState(null);
 
   const fetchDashboardStats = async () => {
     try {
@@ -179,6 +183,30 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleStartEdit = (proj) => {
+    setEditingProject(proj);
+    setTitle(proj.title || '');
+    setDescription(proj.description || '');
+    setPrice(proj.price || '');
+    setCategory(proj.category || 'source-code');
+    setTechStack(proj.techStack ? proj.techStack.join(', ') : '');
+    setPreviewUrls(proj.previewUrls ? proj.previewUrls.join('\n') : '');
+    setExternalDownloadUrl(proj.externalDownloadUrl || '');
+    setFile(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProject(null);
+    setTitle('');
+    setDescription('');
+    setPrice('');
+    setCategory('source-code');
+    setTechStack('');
+    setPreviewUrls('');
+    setExternalDownloadUrl('');
+    setFile(null);
+  };
+
   useEffect(() => {
     fetchDashboardStats();
     fetchProjects();
@@ -192,7 +220,7 @@ const AdminDashboard = () => {
     setFormError('');
     setFormSuccess('');
     
-    if (!file && !externalDownloadUrl) {
+    if (!editingProject && !file && !externalDownloadUrl) {
       setFormError('Please select a project ZIP/PDF file to upload or enter a Google Drive link.');
       return;
     }
@@ -213,26 +241,26 @@ const AdminDashboard = () => {
       if (previewUrls) {
         const urls = previewUrls.split('\n').map((u) => u.trim()).filter((u) => u);
         formData.append('previewUrls', JSON.stringify(urls));
+      } else {
+        formData.append('previewUrls', JSON.stringify([]));
       }
 
-      const data = await request('/projects', 'POST', formData, true);
+      let data;
+      if (editingProject) {
+        data = await request(`/projects/${editingProject._id}`, 'PUT', formData, true);
+      } else {
+        data = await request('/projects', 'POST', formData, true);
+      }
+
       if (data.success) {
-        setFormSuccess('Project uploaded and cataloged successfully!');
-        // Reset form
-        setTitle('');
-        setDescription('');
-        setPrice('');
-        setCategory('source-code');
-        setTechStack('');
-        setPreviewUrls('');
-        setFile(null);
-        setExternalDownloadUrl('');
+        setFormSuccess(editingProject ? 'Project updated successfully!' : 'Project uploaded and cataloged successfully!');
+        handleCancelEdit();
         // Refresh products list & stats
         await fetchProjects();
         await fetchDashboardStats();
       }
     } catch (error) {
-      setFormError(error.message || 'Error uploading project');
+      setFormError(error.message || 'Error saving project');
     } finally {
       setFormLoading(false);
     }
@@ -574,6 +602,13 @@ const AdminDashboard = () => {
                         <td style={{ padding: '12px 8px', fontWeight: 600 }}>INR {proj.price}</td>
                         <td style={{ padding: '12px 8px' }}>
                           <button
+                            onClick={() => handleStartEdit(proj)}
+                            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', marginRight: '10px' }}
+                            title="Edit Project"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
                             onClick={() => handleDeleteProject(proj._id)}
                             style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
                             title="Delete Project"
@@ -592,7 +627,15 @@ const AdminDashboard = () => {
           {/* Right Sidebar: Upload Product Form */}
           <div className="glass-card">
             <h3 style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
-              <PlusCircle size={18} style={{ color: 'var(--primary)' }} /> Upload New Project
+              {editingProject ? (
+                <>
+                  <Edit2 size={18} style={{ color: 'var(--primary)' }} /> Edit Project Details
+                </>
+              ) : (
+                <>
+                  <PlusCircle size={18} style={{ color: 'var(--primary)' }} /> Upload New Project
+                </>
+              )}
             </h3>
             
             {formSuccess && <div style={{ color: 'var(--success)', fontSize: '13px', marginBottom: '14px', fontWeight: 600 }}>{formSuccess}</div>}
@@ -698,8 +741,18 @@ const AdminDashboard = () => {
               </div>
 
               <button type="submit" disabled={formLoading} className="btn btn-primary" style={{ padding: '12px', width: '100%', marginTop: '10px' }}>
-                {formLoading ? 'Publishing...' : 'Publish Product'}
+                {formLoading ? 'Saving...' : editingProject ? 'Save Changes' : 'Publish Product'}
               </button>
+              {editingProject && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="btn btn-secondary"
+                  style={{ padding: '10px', width: '100%', marginTop: '8px' }}
+                >
+                  Cancel Edit
+                </button>
+              )}
             </form>
           </div>
         </div>
