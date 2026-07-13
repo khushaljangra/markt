@@ -15,6 +15,8 @@ import {
   Users,
   Calendar,
   Layers,
+  Lightbulb,
+  ThumbsUp,
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -54,6 +56,10 @@ const AdminDashboard = () => {
 
   // Orders State
   const [orders, setOrders] = useState([]);
+
+  // Feature Requests State
+  const [featureRequests, setFeatureRequests] = useState([]);
+  const [featureRequestsLoading, setFeatureRequestsLoading] = useState(false);
 
   const fetchDashboardStats = async () => {
     try {
@@ -105,6 +111,33 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchAllFeatureRequests = async () => {
+    setFeatureRequestsLoading(true);
+    try {
+      const data = await request('/feature-requests', 'GET');
+      if (data.success) {
+        setFeatureRequests(data.featureRequests);
+      }
+    } catch (error) {
+      console.error('Error fetching feature requests:', error.message);
+    } finally {
+      setFeatureRequestsLoading(false);
+    }
+  };
+
+  const handleUpdateFeatureStatus = async (requestId, status) => {
+    if (!window.confirm(`Mark this feature request as ${status.toUpperCase()}?`)) return;
+    try {
+      const data = await request(`/feature-requests/${requestId}`, 'PATCH', { status });
+      if (data.success) {
+        alert('Feature request status updated successfully!');
+        fetchAllFeatureRequests();
+      }
+    } catch (error) {
+      alert(error.message || 'Failed to update status');
+    }
+  };
+
   const handleApproveUtr = async (orderId) => {
     if (!window.confirm('Approve this UTR payment and unlock downloads?')) return;
     try {
@@ -137,6 +170,7 @@ const AdminDashboard = () => {
     fetchProjects();
     fetchCoupons();
     fetchOrders();
+    fetchAllFeatureRequests();
   }, []);
 
   const handleProductSubmit = async (e) => {
@@ -271,6 +305,7 @@ const AdminDashboard = () => {
           { id: 'products', label: 'Manage Products', icon: <FolderOpen size={16} /> },
           { id: 'coupons', label: 'Coupons Manager', icon: <Ticket size={16} /> },
           { id: 'orders', label: 'Customer Transactions', icon: <ShoppingCart size={16} /> },
+          { id: 'feature_requests', label: 'Feature Bids', icon: <Lightbulb size={16} /> },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -882,6 +917,89 @@ const AdminDashboard = () => {
                             {o.paymentStatus.toUpperCase()}
                           </span>
                         )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Feature Requests Management Tab */}
+      {activeTab === 'feature_requests' && (
+        <div className="glass-card">
+          <h3 style={{ fontSize: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
+            Custom Feature Requests & Developer Bids
+          </h3>
+          
+          {featureRequestsLoading ? (
+            <Loader />
+          ) : featureRequests.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px 0' }}>No customer feature requests recorded yet.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '12px 8px' }}>Project Info</th>
+                    <th style={{ padding: '12px 8px' }}>User Details</th>
+                    <th style={{ padding: '12px 8px' }}>Feature Request Details</th>
+                    <th style={{ padding: '12px 8px' }}>Bid Offer</th>
+                    <th style={{ padding: '12px 8px' }}>Upvotes</th>
+                    <th style={{ padding: '12px 8px' }}>Status & Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {featureRequests.map((req) => (
+                    <tr key={req._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 8px' }}>
+                        <strong style={{ color: 'var(--text-primary)', display: 'block' }}>
+                          {req.project?.title || 'Unknown Project'}
+                        </strong>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ID: {req.project?._id || 'N/A'}</span>
+                      </td>
+                      <td style={{ padding: '12px 8px' }}>
+                        <strong style={{ color: 'var(--text-primary)', display: 'block' }}>{req.user?.name || 'Customer'}</strong>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{req.user?.email || 'N/A'}</span>
+                      </td>
+                      <td style={{ padding: '12px 8px', maxWidth: '320px' }}>
+                        <strong style={{ display: 'block', color: 'var(--text-primary)', marginBottom: '4px' }}>{req.title}</strong>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>{req.description}</p>
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--success)' }}>
+                        INR {req.bidAmount}
+                      </td>
+                      <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>
+                        {req.upvotes?.length || 0} Upvotes
+                      </td>
+                      <td style={{ padding: '12px 8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <span className={`badge badge-${req.status === 'completed' ? 'success' : req.status === 'accepted' ? 'accent' : 'primary'}`} style={{ alignSelf: 'flex-start', fontSize: '10px' }}>
+                            {req.status.toUpperCase()}
+                          </span>
+                          
+                          {req.status === 'pending' && (
+                            <button
+                              onClick={() => handleUpdateFeatureStatus(req._id, 'accepted')}
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: '10px', borderRadius: '4px' }}
+                            >
+                              Accept Bid
+                            </button>
+                          )}
+                          
+                          {req.status === 'accepted' && (
+                            <button
+                              onClick={() => handleUpdateFeatureStatus(req._id, 'completed')}
+                              className="btn btn-accent"
+                              style={{ padding: '4px 8px', fontSize: '10px', borderRadius: '4px' }}
+                            >
+                              Mark Completed
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

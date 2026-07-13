@@ -3,12 +3,20 @@ import {
   createFeatureRequest,
   getProjectFeatureRequests,
   upvoteFeatureRequest,
+  getAllFeatureRequests,
+  updateFeatureRequestStatus,
 } from '../controllers/featureRequestController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/', protect, createFeatureRequest);
+router.route('/')
+  .post(protect, createFeatureRequest)
+  .get(protect, admin, getAllFeatureRequests);
+
+router.route('/:id')
+  .patch(protect, admin, updateFeatureRequestStatus);
+
 router.get('/project/:projectId', getProjectFeatureRequests);
 router.post('/:id/upvote', protect, upvoteFeatureRequest);
 

@@ -162,3 +162,63 @@ export const upvoteFeatureRequest = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * @desc    Get all feature requests (Admin only)
+ * @route   GET /api/feature-requests
+ * @access  Private/Admin
+ */
+export const getAllFeatureRequests = async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      return res.json({ success: true, count: mockDb.featureRequests.length, featureRequests: mockDb.featureRequests });
+    }
+
+    const requests = await FeatureRequest.find()
+      .populate('user', 'name email')
+      .populate('project', 'title')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, count: requests.length, featureRequests: requests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Update feature request status (Admin only)
+ * @route   PATCH /api/feature-requests/:id
+ * @access  Private/Admin
+ */
+export const updateFeatureRequestStatus = async (req, res) => {
+  const { status } = req.body;
+
+  try {
+    if (!isDbConnected()) {
+      const requestObj = mockDb.featureRequests.find((r) => r._id === req.params.id);
+      if (!requestObj) {
+        return res.status(404).json({ success: false, message: 'Feature request not found' });
+      }
+      requestObj.status = status;
+      return res.json({ success: true, featureRequest: requestObj });
+    }
+
+    const requestObj = await FeatureRequest.findById(req.params.id);
+    if (!requestObj) {
+      return res.status(404).json({ success: false, message: 'Feature request not found' });
+    }
+
+    requestObj.status = status;
+    await requestObj.save();
+
+    const populated = await requestObj.populate([
+      { path: 'user', select: 'name email' },
+      { path: 'project', select: 'title' }
+    ]);
+
+    res.json({ success: true, featureRequest: populated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
