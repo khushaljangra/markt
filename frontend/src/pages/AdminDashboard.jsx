@@ -426,7 +426,6 @@ const AdminDashboard = () => {
           { id: 'coupons', label: 'Coupons', icon: <Ticket size={16} /> },
           { id: 'orders', label: 'Transactions', icon: <ShoppingCart size={16} /> },
           { id: 'feature_requests', label: 'Feature Bids', icon: <Lightbulb size={16} /> },
-          { id: 'subscribers', label: 'Subscribers', icon: <Users size={16} /> },
           { id: 'reviews', label: 'Reviews', icon: <Star size={16} /> },
         ].map((tab) => (
           <button
@@ -1175,50 +1174,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Subscribers Manager Tab */}
-      {activeTab === 'subscribers' && (
-        <div className="glass-card">
-          <h3 style={{ fontSize: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
-            Newsletter Subscribers Log
-          </h3>
-          {subscribersLoading ? (
-            <Loader />
-          ) : subscribers.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px 0' }}>No email subscribers found.</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '12px 8px' }}>Subscriber Email</th>
-                    <th style={{ padding: '12px 8px' }}>Matched Name</th>
-                    <th style={{ padding: '12px 8px' }}>Subscribed On</th>
-                    <th style={{ padding: '12px 8px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subscribers.map((sub) => (
-                    <tr key={sub._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 8px', color: 'var(--primary)', fontWeight: 'bold' }}>{sub.email}</td>
-                      <td style={{ padding: '12px 8px' }}>{sub.user?.name || <em style={{ color: 'var(--text-muted)' }}>Non-Registered</em>}</td>
-                      <td style={{ padding: '12px 8px' }}>{new Date(sub.createdAt).toLocaleDateString()}</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <button
-                          onClick={() => handleDeleteSubscriber(sub._id)}
-                          style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
-                          title="Unsubscribe / Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Reviews Tab */}
       {activeTab === 'reviews' && (
