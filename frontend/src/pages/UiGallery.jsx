@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Copy, Check, Sparkles, Code2, Play } from 'lucide-react';
-import UI_COMPONENTS from '../utils/uiComponents.json';
+import Loader from '../components/Loader';
 
 const UiGallery = () => {
+  const [components, setComponents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [activeTab, setActiveTab] = useState({}); // Stores state { [compId]: 'preview' | 'html' | 'css' }
   const [copiedId, setCopiedId] = useState(null); // Stores copied component ID for checkout toast
   const [visibleCount, setVisibleCount] = useState(12);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Fetch the 10MB component database asynchronously from public folder
+  useEffect(() => {
+    fetch('/uiComponents.json')
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch database");
+        return res.json();
+      })
+      .then(data => {
+        setComponents(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Error loading UI components:", err);
+        setIsLoading(false);
+      });
+  }, []);
 
   // Detect screen size for mobile optimization & disable tilt on touch devices
   useEffect(() => {
@@ -35,8 +54,13 @@ const UiGallery = () => {
     'Patterns'
   ];
 
-  const filteredComponents = UI_COMPONENTS.filter(comp => {
-    const matchesSearch = comp.name.toLowerCase().includes(searchQuery.toLowerCase());
+  // Enhanced search precision (matches Name, Author, and Category keywords)
+  const filteredComponents = components.filter(comp => {
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = comp.name.toLowerCase().includes(query) ||
+                          comp.author.toLowerCase().includes(query) ||
+                          comp.category.toLowerCase().includes(query) ||
+                          comp.id.toLowerCase().includes(query);
     const matchesCategory = selectedCategory === 'All' || comp.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -118,6 +142,15 @@ const UiGallery = () => {
       glow.style.opacity = '0';
     }
   };
+
+  // Page loader during DB loading state
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '40px 0', minHeight: '80vh' }} className="container animate-fade-in">
@@ -309,7 +342,7 @@ const UiGallery = () => {
                     transform: 'perspective(1000px)'
                   }}
                 >
-                  {/* Neon Glow Hover Border (Radial Background Gradient) */}
+                  {/* Neon Glow Hover Border */}
                   <div 
                     className="3d-glow" 
                     style={{
@@ -429,7 +462,7 @@ const UiGallery = () => {
 
                     {/* Content Display Frame */}
                     <div style={{ flexGrow: 1, position: 'relative', background: '#090d16', overflow: 'hidden' }}>
-                      {/* Live Render Preview */}
+                      {/* Live Render Preview (Lazy Loaded) */}
                       {currentTab === 'preview' && (
                         <iframe
                           srcDoc={getIframeSrcDoc(comp.html, comp.css)}
@@ -441,6 +474,7 @@ const UiGallery = () => {
                           }}
                           title={comp.name}
                           sandbox="allow-scripts"
+                          loading="lazy"
                         />
                       )}
 
