@@ -432,10 +432,6 @@ export const getDownloadLink = async (req, res) => {
       if (!project) {
         return res.status(404).json({ success: false, message: 'Project not found' });
       }
-      if (project.externalDownloadUrl) {
-        const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
-        return res.json({ success: true, downloadUrl: finalUrl });
-      }
       const downloadUrl = `${hostUrl}/api/projects/download-secure?token=mock_download_token_${projectId}`;
       return res.json({ success: true, downloadUrl });
     }
@@ -459,10 +455,6 @@ export const getDownloadLink = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    if (project.externalDownloadUrl) {
-      const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
-      return res.json({ success: true, downloadUrl: finalUrl });
-    }
 
     let fileKey = project.fileKey;
     let fileName = project.fileName;
@@ -507,6 +499,11 @@ export const downloadProjectSecure = async (req, res) => {
     const projectId = token.replace('mock_download_token_', '');
     const project = mockDb.projects.find(p => p._id === projectId);
     
+    if (project && project.externalDownloadUrl) {
+      const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
+      return res.redirect(finalUrl);
+    }
+
     if (project && project.fileKey) {
       const filePath = getSecureFilePath(project.fileKey);
       if (fs.existsSync(filePath)) {
@@ -524,20 +521,6 @@ export const downloadProjectSecure = async (req, res) => {
 
     const { fileKey, originalName, userId, projectId, orderId } = decoded;
 
-    // Check if project has Google Drive / external download URL, and redirect directly
-    if (!isDbConnected()) {
-      const project = mockDb.projects.find(p => p._id === projectId);
-      if (project && project.externalDownloadUrl) {
-        const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
-        return res.redirect(finalUrl);
-      }
-    } else {
-      const project = await Project.findById(projectId);
-      if (project && project.externalDownloadUrl) {
-        const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
-        return res.redirect(finalUrl);
-      }
-    }
 
     // Check if order exists and is paid
     const order = await Order.findById(orderId).populate('user');
@@ -587,6 +570,21 @@ export const downloadProjectSecure = async (req, res) => {
 
     // Increment global download count on the project
     await Project.findByIdAndUpdate(projectId, { $inc: { downloadCount: 1 } });
+
+    // Check if project has Google Drive / external download URL, and redirect directly
+    if (!isDbConnected()) {
+      const project = mockDb.projects.find(p => p._id === projectId);
+      if (project && project.externalDownloadUrl) {
+        const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
+        return res.redirect(finalUrl);
+      }
+    } else {
+      const project = await Project.findById(projectId);
+      if (project && project.externalDownloadUrl) {
+        const finalUrl = convertGoogleDriveLink(project.externalDownloadUrl);
+        return res.redirect(finalUrl);
+      }
+    }
 
     // Stream file
     const filePath = getSecureFilePath(fileKey);
