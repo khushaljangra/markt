@@ -25,6 +25,7 @@ import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Wishlist from './pages/Wishlist';
 import SupportChat from './pages/SupportChat';
+import UiGallery from './pages/UiGallery';
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
                   <Route path="/projects" element={<ProjectListing />} />
                   <Route path="/projects/:id" element={<ProjectDetail />} />
                   <Route path="/cart" element={<Cart />} />
+                  <Route path="/ui-gallery" element={<UiGallery />} />
 
                   {/* Authenticated user routes */}
                   <Route
