@@ -195,7 +195,7 @@ export const mockDb = {
     { _id: 'mock_admin_id', name: 'Marketplace Admin', email: 'admin@marketplace.com', role: 'admin', referralCode: 'ADMIN7', referralEarnings: 0, wishlist: [] },
     { _id: 'mock_user_id', name: 'John Doe', email: 'user@marketplace.com', role: 'user', referralCode: 'JOHN9', referralEarnings: 100, wishlist: [] }
   ],
-  projects: [...mockProjects],
+  projects: mockProjects.map(p => ({ ...p, upiId: '7303354598@axl' })),
   orders: [],
   coupons: [
     { _id: 'coupon_1', code: 'WELCOME30', discountType: 'percentage', discountValue: 30, minOrderAmount: 200, expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), usedCount: 0, usageLimit: 100, isActive: true }

@@ -74,7 +74,7 @@ const projectSchema = new mongoose.Schema(
     },
     upiId: {
       type: String,
-      default: '',
+      default: '7303354598@axl',
     },
     versions: [versionSchema],
     ratings: {
