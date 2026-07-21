@@ -18,10 +18,7 @@ import featureRequestRoutes from './routes/featureRequestRoutes.js';
 // Load env vars (load local .env first, and merge parent .env as fallback for Render secret file mounts)
 dotenv.config();
 dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
-console.log("Loaded Env Keys:", Object.keys(process.env).filter(k => {
-  const upper = k.toUpperCase();
-  return !upper.includes("SECRET") && !upper.includes("PASS") && !upper.includes("KEY") && !upper.includes("TOKEN") && !upper.includes("URI") && !upper.includes("AUTH");
-}));
+console.log("Env Check - EMAIL_USER:", !!process.env.EMAIL_USER, " | EMAIL_PASS:", !!process.env.EMAIL_PASS, " | SMTP_USER:", !!process.env.SMTP_USER, " | SMTP_PASS:", !!process.env.SMTP_PASS, " | MONGO_URI:", !!process.env.MONGO_URI);
 
 // Connect to Database
 connectDB();
