@@ -15,16 +15,27 @@ const smtpPort = parseInt(process.env.SMTP_PORT) || 465;
 const smtpFrom = process.env.SMTP_FROM || (smtpUser ? `"Digital Marketplace" <${smtpUser}>` : '"Digital Marketplace" <noreply@digitalmarketplace.com>');
 
 if (smtpHost && smtpUser && smtpPass) {
-  transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465, // true for 465, false for other ports
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
-  console.log(`SMTP Mail Server Configured (${smtpHost}:${smtpPort})`);
+  const isGmail = smtpHost.includes('gmail.com');
+  const transportConfig = isGmail 
+    ? {
+        service: 'gmail',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      }
+    : {
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      };
+
+  transporter = nodemailer.createTransport(transportConfig);
+  console.log(`SMTP Mail Server Configured (${isGmail ? 'Gmail Service' : `${smtpHost}:${smtpPort}`})`);
 } else {
   console.log('SMTP credentials missing. Mail will be logged to system console.');
 }
