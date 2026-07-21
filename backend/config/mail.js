@@ -1,4 +1,10 @@
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load env vars immediately for ES Module import order safety in monorepos
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 let transporter = null;
 
