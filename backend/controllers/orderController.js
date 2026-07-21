@@ -6,7 +6,8 @@ import User from '../models/User.js';
 import DownloadLog from '../models/DownloadLog.js';
 import { createRazorpayOrder, verifyRazorpaySignature } from '../config/razorpay.js';
 import { generateSignedDownloadUrl } from '../config/storage.js';
-import { sendPurchaseEmail, sendRejectionEmail } from '../config/mail.js';
+import { sendPurchaseEmail, sendRejectionEmail, sendRecoveryEmail } from '../config/mail.js';
+import AbandonedLead from '../models/AbandonedLead.js';
 import { isDbConnected, mockDb } from '../config/mockDb.js';
 import { sendTelegramMessage, answerCallbackQuery, editTelegramMessage } from '../config/telegram.js';
 
@@ -569,6 +570,9 @@ export const createQrOrder = async (req, res) => {
       contactPhone
     });
 
+    // Delete existing abandoned lead since checkout was completed successfully
+    await AbandonedLead.deleteOne({ email: contactEmail.toLowerCase() }).catch(err => console.error(err));
+
     // Send Telegram notification
     const tgMessageText = `🔔 <b>New Order Received (Live UPI)</b>\n\n` +
       `📦 <b>Order ID:</b> <code>${order._id}</code>\n` +
@@ -806,7 +810,7 @@ export const telegramWebhook = async (req, res) => {
             title: item.titleAtPurchase,
             downloadUrl: `${hostUrl}/api/projects/download-secure?token=mock_download_token_${item.project}`
           }));
-          await sendPurchaseEmail(user ? user.email : 'user@marketplace.com', user ? user.name : 'Customer', order, downloadLinks);
+          sendPurchaseEmail(user ? user.email : 'user@marketplace.com', user ? user.name : 'Customer', order, downloadLinks);
         } else {
           const order = await Order.findById(orderId).populate('items.project').populate('user');
           if (!order) {
@@ -822,21 +826,41 @@ export const telegramWebhook = async (req, res) => {
           await order.save();
 
           const downloadLinks = [];
+          const userIdStr = order.user && order.user._id ? order.user._id.toString() : 'guest_user';
+
           for (const item of order.items) {
+            if (!item.project) {
+              console.warn(`Project missing for order item in order ${order._id}`);
+              continue;
+            }
+            
+            const fileKey = item.project.fileKey || '';
+            const fileName = item.project.fileName || 'download.zip';
+            const projectIdStr = item.project._id ? item.project._id.toString() : '';
+
             const downloadUrl = generateSignedDownloadUrl(
-              item.project.fileKey,
-              item.project.fileName,
-              order.user._id.toString(),
-              item.project._id.toString(),
+              fileKey,
+              fileName,
+              userIdStr,
+              projectIdStr,
               order._id.toString(),
               hostUrl
             );
+            
             downloadLinks.push({
-              title: item.project.title,
+              title: item.project.title || item.titleAtPurchase || 'Download Link',
               downloadUrl,
             });
           }
-          await sendPurchaseEmail(order.user.email, order.user.name, order, downloadLinks);
+
+          const recipientEmail = order.user && order.user.email ? order.user.email : order.contactEmail;
+          const recipientName = order.user && order.user.name ? order.user.name : 'Customer';
+
+          if (recipientEmail) {
+            sendPurchaseEmail(recipientEmail, recipientName, order, downloadLinks);
+          } else {
+            console.warn(`No email found to send purchase confirmation for order ${order._id}`);
+          }
         }
 
         await editTelegramMessage(messageId, `${originalText}\n\n✅ <b>APPROVED by Admin via Telegram</b>`);
@@ -848,15 +872,35 @@ export const telegramWebhook = async (req, res) => {
             await answerCallbackQuery(callbackQueryId, 'Order not found');
             return res.sendStatus(200);
           }
+          if (order.paymentStatus === 'failed') {
+            await answerCallbackQuery(callbackQueryId, 'Order already rejected');
+            return res.sendStatus(200);
+          }
           order.paymentStatus = 'failed';
+          
+          const mockUser = mockDb.users ? mockDb.users.find(u => u._id === order.user) : null;
+          sendRejectionEmail(mockUser ? mockUser.email : 'user@marketplace.com', mockUser ? mockUser.name : 'Customer', order);
         } else {
-          const order = await Order.findById(orderId);
+          const order = await Order.findById(orderId).populate('user');
           if (!order) {
             await answerCallbackQuery(callbackQueryId, 'Order not found');
             return res.sendStatus(200);
           }
+          if (order.paymentStatus === 'failed') {
+            await answerCallbackQuery(callbackQueryId, 'Order already rejected');
+            return res.sendStatus(200);
+          }
           order.paymentStatus = 'failed';
           await order.save();
+
+          const recipientEmail = order.user && order.user.email ? order.user.email : order.contactEmail;
+          const recipientName = order.user && order.user.name ? order.user.name : 'Customer';
+
+          if (recipientEmail) {
+            sendRejectionEmail(recipientEmail, recipientName, order);
+          } else {
+            console.warn(`No email found to send rejection for order ${order._id}`);
+          }
         }
 
         await editTelegramMessage(messageId, `${originalText}\n\n❌ <b>REJECTED by Admin via Telegram</b>`);
@@ -868,5 +912,102 @@ export const telegramWebhook = async (req, res) => {
   } catch (error) {
     console.error('Error handling Telegram Webhook:', error.message);
     res.sendStatus(500);
+  }
+};
+
+/**
+ * @desc    Save/update an abandoned cart lead
+ * @route   POST /api/orders/abandoned-lead
+ * @access  Public
+ */
+export const saveAbandonedLead = async (req, res) => {
+  const { email, phone, items, totalAmount } = req.body;
+
+  try {
+    if (!email || !phone) {
+      return res.status(400).json({ success: false, message: 'Email and phone are required' });
+    }
+
+    if (!isDbConnected()) {
+      return res.json({ success: true, message: 'Mock abandoned lead saved' });
+    }
+
+    await AbandonedLead.findOneAndUpdate(
+      { email: email.toLowerCase() },
+      {
+        email: email.toLowerCase(),
+        phone,
+        items: items.map(item => ({
+          project: item._id,
+          title: item.title,
+          price: item.price
+        })),
+        totalAmount
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: 'Abandoned cart lead updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Send cart recovery discount emails to all abandoned leads (Admin check)
+ * @route   POST /api/orders/send-recovery-emails
+ * @access  Private/Admin
+ */
+export const sendRecoveryEmails = async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      return res.json({ success: true, message: 'Mock recovery campaign ran (0 leads)' });
+    }
+
+    const leads = await AbandonedLead.find();
+    if (leads.length === 0) {
+      return res.json({ success: true, message: 'No abandoned carts found to recover.' });
+    }
+
+    let sentCount = 0;
+    for (const lead of leads) {
+      const itemsListHtml = lead.items
+        .map(item => `<li><strong>${item.title}</strong> - INR ${item.price}</li>`)
+        .join('');
+
+      const htmlContent = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #334155; line-height: 1.6;">
+          <h2 style="color: #6366f1; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Did you forget something?</h2>
+          <p>Hello,</p>
+          <p>We noticed you left some premium projects in your shopping cart! Don't miss out on unlocking full access to these resources.</p>
+          
+          <div style="margin: 20px 0; padding: 15px; background: #eef2ff; border: 1px solid #e0e7ff; border-radius: 8px;">
+            <h4 style="margin: 0 0 10px 0;">Items in your cart:</h4>
+            <ul>
+              ${itemsListHtml}
+            </ul>
+            <p style="margin: 10px 0 0 0;"><strong>Total Value:</strong> INR ${lead.totalAmount}</p>
+          </div>
+
+          <p>Use coupon code <strong>RECOVER10</strong> at checkout to get a <strong>flat 10% discount</strong> on your order!</p>
+          
+          <div style="margin: 25px 0; text-align: center;">
+            <a href="https://codewithkj.vercel.app/cart" style="background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Return to Cart</a>
+          </div>
+
+          <p style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 13px; color: #94a3b8;">
+            Need help? Reply to this email or visit our Support Chat.
+          </p>
+        </div>
+      `;
+
+      await sendRecoveryEmail(lead.email, htmlContent);
+      sentCount++;
+      await lead.deleteOne();
+    }
+
+    res.json({ success: true, message: `Successfully sent ${sentCount} recovery emails.` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

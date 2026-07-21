@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
           role: data.role,
           referralCode: data.referralCode,
           referralEarnings: data.referralEarnings,
+          avatar: data.avatar,
           createdAt: data.createdAt,
         });
         setWishlist(data.wishlist.map(item => item._id || item));
@@ -85,9 +86,9 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
-  const updateProfile = async (name, password) => {
+  const updateProfile = async (name, password, avatar) => {
     try {
-      const data = await request('/auth/profile', 'PUT', { name, password });
+      const data = await request('/auth/profile', 'PUT', { name, password, avatar });
       if (data.success) {
         localStorage.setItem('token', data.token);
         await loadProfile();

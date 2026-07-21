@@ -369,3 +369,99 @@ export const sendRejectionEmail = async (toEmail, userName, order) => {
     console.log('-----------------------------------\n');
   }
 };
+
+/**
+ * Send project update notification email to buyers
+ * @param {string} toEmail - Recipient email
+ * @param {string} userName - Buyer name
+ * @param {Object} project - The project details
+ */
+export const sendUpdateNotificationEmail = async (toEmail, userName, project) => {
+  const htmlContent = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #334155; line-height: 1.6;">
+      <h2 style="color: #0ea5e9; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Project Update Available!</h2>
+      <p>Hello ${userName},</p>
+      <p>We are excited to inform you that a new update has been released for the project <strong>${project.title}</strong>, which you previously purchased.</p>
+      
+      <div style="margin: 20px 0; padding: 15px; background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 8px;">
+        <p style="margin: 0;"><strong>Project:</strong> ${project.title}</p>
+        <p style="margin: 5px 0 0 0;"><strong>Status:</strong> Update Available (Free Download)</p>
+      </div>
+
+      <p>You can download the latest files and release notes anytime from your personal dashboard on our website.</p>
+      
+      <div style="margin: 25px 0; text-align: center;">
+        <a href="https://codewithkj.vercel.app/dashboard" style="background: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+      </div>
+
+      <p style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 13px; color: #94a3b8;">
+        Need help? Reply to this email or visit our Support Chat.
+      </p>
+    </div>
+  `;
+
+  const subject = `New Update Available: ${project.title}`;
+
+  if (smtpUser && smtpPass) {
+    const sent = await sendMailViaVercelBridge(toEmail, subject, htmlContent);
+    if (sent) return true;
+  }
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: smtpFrom,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+      console.log(`Update notification email successfully sent to ${toEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending update email:', error.message);
+      return false;
+    }
+  } else {
+    console.log('\n--- EMAIL SENT (UPDATE NOTIFICATION MOCK) ---');
+    console.log(`To: ${toEmail}`);
+    console.log(`Subject: ${subject}`);
+    console.log('---------------------------------------------\n');
+    return true;
+  }
+};
+
+/**
+ * Send cart recovery email
+ * @param {string} toEmail - Recipient email
+ * @param {string} htmlContent - HTML content of cart recovery
+ */
+export const sendRecoveryEmail = async (toEmail, htmlContent) => {
+  const subject = "Complete your purchase and save 10%!";
+  
+  if (smtpUser && smtpPass) {
+    const sent = await sendMailViaVercelBridge(toEmail, subject, htmlContent);
+    if (sent) return true;
+  }
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: smtpFrom,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+      console.log(`Recovery email successfully sent to ${toEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending recovery email:', error.message);
+      return false;
+    }
+  } else {
+    console.log('\n--- EMAIL SENT (RECOVERY MOCK) ---');
+    console.log(`To: ${toEmail}`);
+    console.log(`Subject: ${subject}`);
+    console.log('----------------------------------\n');
+    return true;
+  }
+};

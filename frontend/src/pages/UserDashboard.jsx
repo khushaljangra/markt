@@ -13,6 +13,15 @@ import {
   Check,
 } from 'lucide-react';
 
+const AVATAR_OPTIONS = [
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80', // Female dev
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80', // Male dev 1
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80', // Male dev 2
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80', // Female dev 2
+  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=120&h=120&q=80', // Young dev
+  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&h=120&q=80', // Tech pro
+];
+
 const UserDashboard = () => {
   const { user, updateProfile, loadProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('purchases');
@@ -20,6 +29,7 @@ const UserDashboard = () => {
   // Profile Update Form
   const [name, setName] = useState(user?.name || '');
   const [password, setPassword] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || '');
   const [profileMsg, setProfileMsg] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
@@ -64,7 +74,7 @@ const UserDashboard = () => {
     setProfileLoading(true);
 
     try {
-      const data = await updateProfile(name, password);
+      const data = await updateProfile(name, password, selectedAvatar);
       if (data.success) {
         setProfileMsg('Profile updated successfully!');
         setPassword('');
@@ -116,18 +126,24 @@ const UserDashboard = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{
-            background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
             width: '64px',
             height: '64px',
             borderRadius: '50%',
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
             color: 'white',
             fontWeight: 'bold',
-            fontSize: '24px'
+            fontSize: '24px',
+            border: '2px solid var(--border)'
           }}>
-            {user?.name?.[0].toUpperCase()}
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              user?.name?.[0].toUpperCase()
+            )}
           </div>
           <div>
             <h2 style={{ fontSize: '24px', color: 'var(--text-primary)' }}>{user?.name}</h2>
@@ -405,6 +421,31 @@ const UserDashboard = () => {
                   {profileError && <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', padding: '12px', borderRadius: '8px', fontSize: '13px', marginBottom: '20px' }}>{profileError}</div>}
 
                   <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '400px' }}>
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', fontWeight: 600 }}>Choose Profile Avatar</label>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {AVATAR_OPTIONS.map((avatarUrl, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => setSelectedAvatar(avatarUrl)}
+                            style={{
+                              width: '56px',
+                              height: '56px',
+                              borderRadius: '50%',
+                              overflow: 'hidden',
+                              cursor: 'pointer',
+                              border: selectedAvatar === avatarUrl ? '3px solid var(--primary)' : '2px solid transparent',
+                              boxShadow: selectedAvatar === avatarUrl ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none',
+                              transition: 'all 0.2s ease',
+                              transform: selectedAvatar === avatarUrl ? 'scale(1.08)' : 'scale(1)'
+                            }}
+                          >
+                            <img src={avatarUrl} alt={`avatar-${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Name</label>
                       <input

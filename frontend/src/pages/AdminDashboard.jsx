@@ -219,6 +219,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSendRecoveryEmails = async () => {
+    if (!window.confirm('Trigger recovery campaign? This will email a 10% coupon to all customers who abandoned checkout.')) return;
+    try {
+      const data = await request('/orders/send-recovery-emails', 'POST');
+      if (data.success) {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to send recovery campaign');
+    }
+  };
+
   const handleApproveUtr = async (orderId) => {
     if (!window.confirm('Approve this UTR payment and unlock downloads?')) return;
     try {
@@ -990,9 +1002,14 @@ const AdminDashboard = () => {
       {/* Customer Transactions List Tab */}
       {activeTab === 'orders' && (
         <div className="glass-card">
-          <h3 style={{ fontSize: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
-            Checkout Transactions Log
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '18px', margin: 0 }}>
+              Checkout Transactions Log
+            </h3>
+            <button onClick={handleSendRecoveryEmails} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              📧 Trigger Recovery Campaign
+            </button>
+          </div>
           {orders.length === 0 ? (
             <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '30px 0' }}>No customer checkouts recorded yet.</p>
           ) : (

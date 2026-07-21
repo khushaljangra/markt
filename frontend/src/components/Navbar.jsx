@@ -168,6 +168,19 @@ const Navbar = () => {
           {/* User Account Controls */}
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {user.avatar && (
+                <img 
+                  src={user.avatar} 
+                  alt={user.name} 
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1.5px solid var(--border)'
+                  }} 
+                />
+              )}
               {user.role === 'admin' ? (
                 <Link to="/admin" className="btn btn-secondary" style={{
                   padding: '8px 14px',

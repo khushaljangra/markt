@@ -177,6 +177,7 @@ export const getUserProfile = async (req, res) => {
           referralCode: user.referralCode,
           referralEarnings: user.referralEarnings,
           wishlist: wishlistDetails,
+          avatar: user.avatar || '',
           createdAt: user.createdAt || new Date(),
         });
       }
@@ -195,6 +196,7 @@ export const getUserProfile = async (req, res) => {
         referralCode: user.referralCode,
         referralEarnings: user.referralEarnings,
         wishlist: user.wishlist,
+        avatar: user.avatar || '',
         createdAt: user.createdAt,
       });
     } else {
@@ -216,6 +218,7 @@ export const updateUserProfile = async (req, res) => {
       const user = mockDb.users.find((u) => u._id === req.user._id);
       if (user) {
         user.name = req.body.name || user.name;
+        user.avatar = req.body.avatar !== undefined ? req.body.avatar : user.avatar;
         return res.json({
           success: true,
           _id: user._id,
@@ -223,6 +226,7 @@ export const updateUserProfile = async (req, res) => {
           email: user.email,
           role: user.role,
           referralCode: user.referralCode,
+          avatar: user.avatar || '',
           token: generateToken(user._id),
         });
       }
@@ -233,6 +237,7 @@ export const updateUserProfile = async (req, res) => {
 
     if (user) {
       user.name = req.body.name || user.name;
+      user.avatar = req.body.avatar !== undefined ? req.body.avatar : user.avatar;
       
       if (req.body.password) {
         user.password = req.body.password;
@@ -247,6 +252,7 @@ export const updateUserProfile = async (req, res) => {
         email: updatedUser.email,
         role: updatedUser.role,
         referralCode: updatedUser.referralCode,
+        avatar: updatedUser.avatar || '',
         token: generateToken(updatedUser._id),
       });
     } else {

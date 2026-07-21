@@ -68,6 +68,26 @@ const Cart = () => {
     setShowQrModal(true);
   };
 
+  const handleAbandonedLeadSave = async (emailVal, phoneVal) => {
+    const emailToUse = emailVal !== undefined ? emailVal : contactEmail;
+    const phoneToUse = phoneVal !== undefined ? phoneVal : contactPhone;
+
+    if (!emailToUse || !emailToUse.includes('@') || !phoneToUse || phoneToUse.trim().length < 10) {
+      return;
+    }
+
+    try {
+      await request('/orders/abandoned-lead', 'POST', {
+        email: emailToUse.trim(),
+        phone: phoneToUse.trim(),
+        items: cartItems,
+        totalAmount: total,
+      });
+    } catch (err) {
+      console.warn('Failed to save abandoned lead:', err.message);
+    }
+  };
+
   const handleQrSubmit = async (e) => {
     e.preventDefault();
     setUtrError('');
@@ -384,6 +404,7 @@ const Cart = () => {
                     setContactEmail(e.target.value);
                     setUtrError('');
                   }}
+                  onBlur={(e) => handleAbandonedLeadSave(e.target.value, undefined)}
                   required
                 />
               </div>
@@ -401,6 +422,7 @@ const Cart = () => {
                     setContactPhone(e.target.value);
                     setUtrError('');
                   }}
+                  onBlur={(e) => handleAbandonedLeadSave(undefined, e.target.value)}
                   required
                 />
               </div>

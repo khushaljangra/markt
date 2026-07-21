@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import Project from '../models/Project.js';
 import Subscriber from '../models/Subscriber.js';
-import { sendNewProjectEmail } from '../config/mail.js';
+import { sendNewProjectEmail, sendUpdateNotificationEmail } from '../config/mail.js';
 import Order from '../models/Order.js';
 import DownloadLog from '../models/DownloadLog.js';
 import {
@@ -303,6 +303,8 @@ export const updateProject = async (req, res) => {
         : previewUrls;
     }
 
+    const hasNewFile = !!req.file;
+
     // If a new file is uploaded
     if (req.file) {
       // Clean up old file (optional, or we keep it since it is in version history)
@@ -324,6 +326,46 @@ export const updateProject = async (req, res) => {
     }
 
     const updatedProject = await project.save();
+
+    // Trigger update emails to past buyers in the background
+    if (hasNewFile) {
+      (async () => {
+        try {
+          let emails = [];
+          if (isDbConnected()) {
+            const orders = await Order.find({ "items.project": updatedProject._id, paymentStatus: 'paid' }).populate('user');
+            const seen = new Set();
+            for (const o of orders) {
+              const email = o.user && o.user.email ? o.user.email : o.contactEmail;
+              const name = o.user && o.user.name ? o.user.name : 'Customer';
+              if (email && !seen.has(email)) {
+                seen.add(email);
+                emails.push({ email, name });
+              }
+            }
+          } else {
+            const mockOrders = mockDb.orders.filter(o => o.items.some(item => item.project === updatedProject._id) && o.paymentStatus === 'paid');
+            const seen = new Set();
+            for (const o of mockOrders) {
+              const u = mockDb.users.find(usr => usr._id === o.user);
+              const email = u ? u.email : 'user@marketplace.com';
+              const name = u ? u.name : 'Customer';
+              if (email && !seen.has(email)) {
+                seen.add(email);
+                emails.push({ email, name });
+              }
+            }
+          }
+
+          for (const recipient of emails) {
+            sendUpdateNotificationEmail(recipient.email, recipient.name, updatedProject);
+          }
+        } catch (err) {
+          console.error("Error triggering update emails:", err.message);
+        }
+      })();
+    }
+
     res.json({ success: true, project: updatedProject });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
